@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine.Analytics;
+﻿using System.Collections.Generic;
 
 namespace CosmicCuration.Bullets
 {
@@ -26,7 +24,7 @@ namespace CosmicCuration.Bullets
 					return pooledBullet.bullet;
 				}
 			}
-			return CreateNewPulledBullet();
+			return CreateNewPooledBullet();
 		} 
 
 		public void ReturnToBulletPool(BulletController returnBullet)
@@ -35,7 +33,7 @@ namespace CosmicCuration.Bullets
 			pooledBullet.isUsed = false;
 		}
 
-		private BulletController CreateNewPulledBullet()
+		private BulletController CreateNewPooledBullet()
 		{
 			PooledBullet pooledBullet = new PooledBullet();
 			pooledBullet.bullet = new BulletController(bulletView,bulletScriptableObject);
