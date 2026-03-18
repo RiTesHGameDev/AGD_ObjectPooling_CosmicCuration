@@ -11,7 +11,7 @@ namespace CosmicCuration.Utilities
     {
         public List<PooledItem<T>> pooledItems = new List<PooledItem<T>>();
 
-        public virtual T GetItem<U>() where U : T
+        public T GetItem<U>() where U : T
         {
             if (pooledItems.Count > 0)
             {
