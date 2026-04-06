@@ -3,6 +3,7 @@ using UnityEngine;
 using CosmicCuration.Bullets;
 using CosmicCuration.Audio;
 using CosmicCuration.VFX;
+using System.Collections;
 
 namespace CosmicCuration.Player
 {
@@ -19,6 +20,8 @@ namespace CosmicCuration.Player
         private ShieldState currentShieldState;
         private int currentHealth;
         private float currentRateOfFire;
+
+        private Coroutine fireRoutine;
 
         public PlayerController(PlayerView playerViewPrefab, PlayerScriptableObject playerScriptableObject, BulletPool bulletPool)
         {
@@ -68,19 +71,65 @@ namespace CosmicCuration.Player
             var angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
             playerView.transform.rotation = Quaternion.AngleAxis(angle - 90, Vector3.forward);
         }
-
         private void HandleShooting()
         {
             if (Input.GetKeyDown(KeyCode.Space))
-                FireWeapon();
+                StartFiring();
+
             if (Input.GetKeyUp(KeyCode.Space))
+            {
                 currentShootingState = ShootingState.NotFiring;
+                StopFiring();
+            }
         }
 
-        // Firing Weapons:
-        private async void FireWeapon()
+        //private void HandleShooting()
+        //{
+        //    if (Input.GetKeyDown(KeyCode.Space))
+        //        FireWeapon();
+        //    if (Input.GetKeyUp(KeyCode.Space))
+        //        currentShootingState = ShootingState.NotFiring;
+        //}
+
+        //// Firing Weapons:
+        ////private async void FireWeapon()
+        ////{
+        ////    currentShootingState = ShootingState.Firing;
+        ////    while (currentShootingState == ShootingState.Firing)
+        ////    {
+        ////        switch (currentWeaponMode)
+        ////        {
+        ////            case WeaponMode.SingleCanon:
+        ////                FireBulletAtPosition(playerView.canonTransform);
+        ////                break;
+        ////            case WeaponMode.DoubleTurret:
+        ////                FireBulletAtPosition(playerView.turretTransform1);
+        ////                FireBulletAtPosition(playerView.turretTransform2);
+        ////                break;
+        ////        }
+        ////        await Task.Delay(Mathf.RoundToInt(currentRateOfFire * 1000));
+        ////    }
+        ////}
+
+        private void StartFiring()
+        {
+            if (fireRoutine != null) return;
+            fireRoutine = playerView.StartCoroutine(FireWeaponCoroutine());
+        }
+
+        private void StopFiring()
+        {
+            if (fireRoutine != null)
+            {
+                playerView.StopCoroutine(fireRoutine);
+                fireRoutine = null;
+            }
+        }
+
+        private IEnumerator FireWeaponCoroutine()
         {
             currentShootingState = ShootingState.Firing;
+
             while (currentShootingState == ShootingState.Firing)
             {
                 switch (currentWeaponMode)
@@ -88,12 +137,14 @@ namespace CosmicCuration.Player
                     case WeaponMode.SingleCanon:
                         FireBulletAtPosition(playerView.canonTransform);
                         break;
+
                     case WeaponMode.DoubleTurret:
                         FireBulletAtPosition(playerView.turretTransform1);
                         FireBulletAtPosition(playerView.turretTransform2);
                         break;
                 }
-                await Task.Delay(Mathf.RoundToInt(currentRateOfFire * 1000));
+
+                yield return new WaitForSeconds(currentRateOfFire);
             }
         }
 
@@ -123,19 +174,26 @@ namespace CosmicCuration.Player
                 PlayerDeath();
         }
 
-        private async void PlayerDeath()
+        private void PlayerDeath()
         {
+            Vector3 deathPosition = playerView.transform.position;
+
+            // Run coroutine from safe object
+            CoroutineRunner.Instance.StartCoroutine(PlayerDeathCoroutine(deathPosition));
+
             Object.Destroy(playerView.gameObject);
-            
-            GameService.Instance.GetVFXService().PlayVFXAtPosition(VFXType.PlayerExplosion, playerView.transform.position);
+
+            GameService.Instance.GetVFXService().PlayVFXAtPosition(VFXType.PlayerExplosion, deathPosition);
             GameService.Instance.GetSoundService().PlaySoundEffects(SoundType.PlayerDeath);
 
             currentShootingState = ShootingState.NotFiring;
             GameService.Instance.GetEnemyService().SetEnemySpawning(false);
             GameService.Instance.GetPowerUpService().SetPowerUpSpawning(false);
-            
-            // Wait for Player Ship Destruction.
-            await Task.Delay(playerScriptableObject.deathDelay * 1000);
+        }
+
+        private IEnumerator PlayerDeathCoroutine(Vector3 deathPosition)
+        {
+            yield return new WaitForSeconds(playerScriptableObject.deathDelay);
             GameService.Instance.GetUIService().EnableGameOverUI();
         }
 

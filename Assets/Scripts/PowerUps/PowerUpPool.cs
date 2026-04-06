@@ -8,11 +8,11 @@ namespace CosmicCuration.PowerUps
 	{
 		private PowerUpData powerUpData;
 
-		public PowerUpController GetPowerUP<T>(PowerUpData powerUpData) where T : PowerUpController
-		{
-			this.powerUpData = powerUpData;
-			return GetItem<T>();
-		}
+        public PowerUpController GetPowerUp<T>(PowerUpData powerUpData) where T : PowerUpController
+        {
+            this.powerUpData = powerUpData;
+            return GetItem<T>();
+        }
 
         protected override PowerUpController CreateItem<T>()
         {
@@ -33,6 +33,8 @@ namespace CosmicCuration.PowerUps
                 throw new NotSupportedException("Power UP type not supported");
             }
         }
-	}
+
+       
+    }
 
 }

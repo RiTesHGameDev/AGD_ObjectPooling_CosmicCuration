@@ -1,6 +1,7 @@
 using UnityEngine;
 using CosmicCuration.Player;
 using System.Threading.Tasks;
+using System.Collections;
 
 namespace CosmicCuration.PowerUps
 {
@@ -9,6 +10,8 @@ namespace CosmicCuration.PowerUps
         private PowerUpView powerUpView;
         private float activeDuration;
         private bool isActive;
+
+        private Coroutine timerRoutine;
 
         public PowerUpController(PowerUpData powerUpData)
         {
@@ -24,15 +27,30 @@ namespace CosmicCuration.PowerUps
             powerUpView.gameObject.SetActive(true);
         }
 
-        public async void StartTimer()
+        //public async void StartTimer()
+        //{
+        //    if (isActive)
+        //    {
+        //        await Task.Delay(Mathf.RoundToInt(activeDuration * 1000));
+        //        Deactivate();
+        //    }
+        //}
+        private void StartTimer()
         {
-            if (isActive)
-            {
-                await Task.Delay(Mathf.RoundToInt(activeDuration * 1000));
-                Deactivate();
-            }
+            // Stop previous timer (important for pooling)
+            if (timerRoutine != null)
+                CoroutineRunner.Instance.StopCoroutine(timerRoutine);
+
+            timerRoutine = CoroutineRunner.Instance.StartCoroutine(TimerCoroutine());
         }
 
+        private IEnumerator TimerCoroutine()
+        {
+            yield return new WaitForSecondsRealtime(activeDuration);
+
+            if (isActive)
+                Deactivate();
+        }
         public void PowerUpTriggerEntered(GameObject collidedObject)
         {
             if (collidedObject.GetComponent<PlayerView>() != null)
@@ -41,15 +59,34 @@ namespace CosmicCuration.PowerUps
 
         public virtual void Activate()
         {
+            if (isActive) return;
+
             isActive = true;
+
             powerUpView.gameObject.SetActive(false);
+
             StartTimer();
         }
 
+        //public virtual void Deactivate()
+        //{
+        //    isActive = false;
+        //    GameService.Instance.GetPowerUpService().ReturnPowerUpToPool(this);
+        //}
         public virtual void Deactivate()
         {
+            if (!isActive) return;
+
             isActive = false;
-            GameService.Instance.GetPowerUpService().ReturnPowerToPool(this);
+
+            // Stop timer (extra safety)
+            if (timerRoutine != null)
+            {
+                CoroutineRunner.Instance.StopCoroutine(timerRoutine);
+                timerRoutine = null;
+            }
+
+            GameService.Instance.GetPowerUpService().ReturnPowerUpToPool(this);
         }
     } 
 }
